@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Свадебный сайт — Вероника и Денис
 
-## Getting Started
+Одностраничный сайт к свадьбе 21 марта 2026 года.
 
-First, run the development server:
+## Возможности
+
+- **Фотоплёнка** — анимированный фон из фотографий (добавьте свои в `public/photos/`)
+- **Обратный отсчёт** — до 21 марта 2026, 9:30 по Москве
+- **Гостевой альбом** — комментарии, смайлики, изображения по ссылке
+- **Викторина** — вопросы о молодожёнах, анимация ответов, статистика
+- **Блог** — фото, текст, видео с админ-панелью
+
+## Запуск
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Сайт: http://localhost:3000  
+Админка: http://localhost:3000/admin (пароль по умолчанию: `wedding2026`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Фотографии
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Поместите фотографии в `public/photos/` с именами:
+- 1.jpg, 2.jpg, 3.jpg … 10.jpg — для фотоплёнки на фоне
 
-## Learn More
+Или измените список в `src/components/PhotoStrip.tsx`.
 
-To learn more about Next.js, take a look at the following resources:
+## Викторина
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Вопросы редактируются в `src/lib/quiz-data.ts`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Админка
 
-## Deploy on Vercel
+- Пароль задаётся через переменную окружения `ADMIN_SECRET`
+- Можно создавать записи в блог: заголовок, текст, ссылки на фото, URL видео
+- Для видео: вставьте embed-ссылку (например, YouTube → Поделиться → Встроить)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Деплой
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Рекомендуется хостинг с постоянной файловой системой (VPS, Railway, Render), т.к. данные хранятся в JSON-файлах в папке `data/`. Для Vercel потребуется подключить базу данных (Supabase, PlanetScale и т.д.).
