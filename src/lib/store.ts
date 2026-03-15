@@ -1,10 +1,19 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { QUIZ_QUESTIONS as DEFAULT_QUIZ_QUESTIONS } from "./quiz-data";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const GUESTBOOK_FILE = path.join(DATA_DIR, "guestbook.json");
 const QUIZ_FILE = path.join(DATA_DIR, "quiz.json");
+const QUIZ_QUESTIONS_FILE = path.join(DATA_DIR, "quiz-questions.json");
 const BLOG_FILE = path.join(DATA_DIR, "blog.json");
+
+export interface QuizQuestion {
+  id: number;
+  question: string;
+  options: string[];
+  correctIndex: number;
+}
 
 export interface GuestbookEntry {
   id: string;
@@ -12,6 +21,7 @@ export interface GuestbookEntry {
   message: string;
   emoji?: string;
   image?: string;
+  video?: string;
   createdAt: string;
 }
 
@@ -77,6 +87,16 @@ export async function addGuestbookEntry(
   entries.push(newEntry);
   await writeJson(GUESTBOOK_FILE, entries);
   return newEntry;
+}
+
+export async function getQuizQuestions(): Promise<QuizQuestion[]> {
+  const stored = await readJson<QuizQuestion[]>(QUIZ_QUESTIONS_FILE, []);
+  if (stored.length > 0) return stored;
+  return DEFAULT_QUIZ_QUESTIONS;
+}
+
+export async function setQuizQuestions(questions: QuizQuestion[]): Promise<void> {
+  await writeJson(QUIZ_QUESTIONS_FILE, questions);
 }
 
 export async function getQuizSubmissions(): Promise<QuizSubmission[]> {

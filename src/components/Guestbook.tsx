@@ -14,6 +14,7 @@ interface GuestbookEntry {
   message: string;
   emoji?: string;
   image?: string;
+  video?: string;
   createdAt: string;
 }
 
@@ -25,6 +26,10 @@ export function Guestbook() {
   const [message, setMessage] = useState("");
   const [emoji, setEmoji] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [error, setError] = useState("");
 
@@ -64,7 +69,8 @@ export function Guestbook() {
           author: author.trim(),
           message: message.trim(),
           emoji: emoji || undefined,
-          image: imageUrl.trim() || undefined,
+          image: uploadedImageUrl || imageUrl.trim() || undefined,
+          video: uploadedVideoUrl || undefined,
         }),
       });
 
@@ -80,6 +86,9 @@ export function Guestbook() {
       setMessage("");
       setEmoji("");
       setImageUrl("");
+      setVideoUrl("");
+      setUploadedImageUrl(null);
+      setUploadedVideoUrl(null);
     } catch {
       setError("Не удалось отправить сообщение");
     } finally {
@@ -90,6 +99,33 @@ export function Guestbook() {
   const handleEmojiClick = (data: { emoji: string }) => {
     setEmoji(data.emoji);
     setShowEmojiPicker(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "video") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError("");
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload/guestbook", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Ошибка загрузки файла");
+        return;
+      }
+      if (type === "image") setUploadedImageUrl(data.url);
+      else setUploadedVideoUrl(data.url);
+    } catch {
+      setError("Не удалось загрузить файл");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -164,12 +200,39 @@ export function Guestbook() {
                   </div>
                 )}
               </div>
+              <label className="px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition cursor-pointer text-sm font-medium">
+                {uploading ? "Загрузка…" : "📷 Фото"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => handleFileUpload(e, "image")}
+                />
+              </label>
+              <label className="px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition cursor-pointer text-sm font-medium">
+                {uploading ? "Загрузка…" : "🎬 Видео"}
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => handleFileUpload(e, "video")}
+                />
+              </label>
+              {(uploadedImageUrl || uploadedVideoUrl) && (
+                <span className="text-sm text-indigo-600">
+                  {uploadedImageUrl && "Фото загружено ✓"}
+                  {uploadedImageUrl && uploadedVideoUrl && " · "}
+                  {uploadedVideoUrl && "Видео загружено ✓"}
+                </span>
+              )}
               <div className="flex-1 min-w-[200px]">
                 <input
                   type="url"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="Ссылка на картинку (опционально)"
+                  placeholder="Или ссылка на картинку"
                   className="w-full px-4 py-2 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none text-sm"
                 />
               </div>
@@ -235,6 +298,18 @@ export function Guestbook() {
                           }}
                         />
                       </a>
+                    )}
+                    {entry.video && (
+                      <div className="mt-3 rounded-lg overflow-hidden border border-indigo-100">
+                        <video
+                          src={entry.video}
+                          controls
+                          className="max-w-full max-h-80"
+                          playsInline
+                        >
+                          Ваш браузер не поддерживает видео.
+                        </video>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -61,7 +61,7 @@ export function Countdown() {
           До свадьбы осталось
         </h2>
         <p className="text-lg text-indigo-600">
-          21 марта 2026 · 9:30 · Москва
+          21 марта 2026 · 9:30 · Сочи
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-4 md:gap-8">

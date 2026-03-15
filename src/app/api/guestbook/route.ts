@@ -16,7 +16,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { author, message, emoji, image } = body;
+    const { author, message, emoji, image, video } = body;
 
     if (!author?.trim() || !message?.trim()) {
       return NextResponse.json(
@@ -44,6 +44,7 @@ export async function POST(request: Request) {
       message: message.trim(),
       emoji: emoji || undefined,
       image: image || undefined,
+      video: video || undefined,
     });
 
     return NextResponse.json(entry);

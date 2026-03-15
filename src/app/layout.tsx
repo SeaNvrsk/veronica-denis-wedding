@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Lato } from "next/font/google";
 import "./globals.css";
 
@@ -17,7 +17,14 @@ const lato = Lato({
 export const metadata: Metadata = {
   title: "Вероника и Денис — Свадьба 2026",
   description:
-    "Приглашаем на свадьбу Вероники и Дениса. 21 марта 2026, 9:30. Гостевой альбом, викторина и блог.",
+    "Приглашаем разделить нашу радость. 21 марта 2026, 9:30, Сочи. Гостевой альбом, викторина и блог.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#4f46e5",
 };
 
 export default function RootLayout({

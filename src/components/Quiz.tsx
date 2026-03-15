@@ -92,6 +92,10 @@ export function Quiz() {
           total: data.total,
           correctAnswers: data.correctAnswers,
         });
+        fetch("/api/quiz?type=stats")
+          .then((r) => r.json())
+          .then(setStats)
+          .catch(() => {});
       }
     } catch {
     } finally {
@@ -216,10 +220,15 @@ export function Quiz() {
               <p className="text-2xl font-bold text-indigo-900 mb-2">
                 Ваш результат: {result.score} из {result.total}
               </p>
-              <p className="text-indigo-600 mb-6">
+              <p className="text-indigo-600 mb-1">
                 {Math.round((result.score / result.total) * 100)}% правильных
                 ответов
               </p>
+              {stats && (
+                <p className="text-indigo-700 font-medium mb-6">
+                  Средний результат: {stats.avgScore} из {stats.totalQuestions}
+                </p>
+              )}
               <div className="flex gap-3 justify-center flex-wrap">
                 <button
                   onClick={fetchStats}

@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { getQuizSubmissions, addQuizSubmission } from "@/lib/store";
-import { QUIZ_QUESTIONS } from "@/lib/quiz-data";
+import { getQuizSubmissions, addQuizSubmission, getQuizQuestions } from "@/lib/store";
 
 export async function GET(request: Request) {
   try {
+    const questions = await getQuizQuestions();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
 
     if (type === "stats") {
       const submissions = await getQuizSubmissions();
       const totalParticipants = submissions.length;
-      const questionStats = QUIZ_QUESTIONS.map((q) => {
+      const questionStats = questions.map((q) => {
         const correctCount = submissions.filter((s) => {
           const answer = s.answers.find((a) => a.questionId === q.id);
           return answer?.correct;
@@ -37,13 +37,13 @@ export async function GET(request: Request) {
       return NextResponse.json({
         totalParticipants,
         avgScore,
-        totalQuestions: QUIZ_QUESTIONS.length,
+        totalQuestions: questions.length,
         questionStats,
       });
     }
 
     return NextResponse.json({
-      questions: QUIZ_QUESTIONS.map(({ id, question, options, correctIndex }) => ({
+      questions: questions.map(({ id, question, options, correctIndex }) => ({
         id,
         question,
         options,
@@ -60,6 +60,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const questions = await getQuizQuestions();
     const body = await request.json();
     const { answers } = body as { answers: { questionId: number; answer: number }[] };
 
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     const processedAnswers = answers.map((a) => {
-      const question = QUIZ_QUESTIONS.find((q) => q.id === a.questionId);
+      const question = questions.find((q) => q.id === a.questionId);
       const correct = question ? question.correctIndex === a.answer : false;
       return {
         questionId: a.questionId,
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
     });
 
     const score = processedAnswers.filter((a) => a.correct).length;
-    const total = QUIZ_QUESTIONS.length;
+    const total = questions.length;
 
     const submission = await addQuizSubmission({
       answers: processedAnswers,
