@@ -16,6 +16,14 @@ export function getSupabaseServerClient(): SupabaseClient {
   });
 }
 
+export function getSupabaseServiceClient(): SupabaseClient {
+  const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+  return createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 export function getSupabaseBrowserClient(): SupabaseClient {
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const anonKey = requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");

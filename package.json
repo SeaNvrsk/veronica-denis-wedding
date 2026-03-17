@@ -10,6 +10,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.2",
+    "@tiptap/extension-image": "^3.20.4",
+    "@tiptap/extension-link": "^3.20.4",
+    "@tiptap/react": "^3.20.4",
+    "@tiptap/starter-kit": "^3.20.4",
     "date-fns": "^4.1.0",
     "emoji-picker-react": "^4.18.0",
     "next": "16.1.6",

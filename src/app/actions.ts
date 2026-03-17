@@ -98,7 +98,12 @@ export async function uploadGuestbookMediaAction(formData: FormData) {
     });
 
   if (uploadError) {
-    return { ok: false as const, error: "Не удалось загрузить файл" };
+    return {
+      ok: false as const,
+      error:
+        "Не удалось загрузить файл. Проверьте политики Supabase Storage для bucket `wedding-photos`.",
+      details: uploadError.message,
+    };
   }
 
   const { data } = supabase.storage.from("wedding-photos").getPublicUrl(path);

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBlogPosts, addBlogPost } from "@/lib/store";
+import { getSupabaseServerClient, getSupabaseServiceClient } from "@/utils/supabase";
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "wedding2026";
 
@@ -11,9 +11,24 @@ function checkAuth(request: Request): boolean {
 
 export async function GET() {
   try {
-    const posts = await getBlogPosts();
-    const published = posts.filter((p) => p.published);
-    return NextResponse.json(published);
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("blog_posts")
+      .select("*")
+      .eq("published", true)
+      .order("created_at", { ascending: false });
+    if (error) {
+      return NextResponse.json({ error: "Failed to load blog" }, { status: 500 });
+    }
+    return NextResponse.json(
+      (data || []).map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        contentHtml: p.content_html,
+        media: p.media || [],
+        createdAt: p.created_at,
+      }))
+    );
   } catch {
     return NextResponse.json(
       { error: "Failed to load blog" },
@@ -29,24 +44,37 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { title, content, images, videoUrl, published } = body;
+    const { title, contentHtml, media, published } = body;
 
-    if (!title?.trim() || !content?.trim()) {
+    if (!title?.trim() || !contentHtml?.trim()) {
       return NextResponse.json(
         { error: "Заголовок и содержание обязательны" },
         { status: 400 }
       );
     }
 
-    const post = await addBlogPost({
-      title: title.trim(),
-      content: content.trim(),
-      images: Array.isArray(images) ? images : [],
-      videoUrl: videoUrl || undefined,
-      published: published ?? true,
+    const supabase = getSupabaseServiceClient();
+    const { data, error } = await supabase
+      .from("blog_posts")
+      .insert({
+        title: title.trim(),
+        content_html: contentHtml.trim(),
+        media: Array.isArray(media) ? media : [],
+        published: published ?? true,
+      })
+      .select("*")
+      .single();
+    if (error) {
+      return NextResponse.json({ error: "Не удалось создать запись", details: error.message }, { status: 500 });
+    }
+    return NextResponse.json({
+      id: data.id,
+      title: data.title,
+      contentHtml: data.content_html,
+      media: data.media || [],
+      createdAt: data.created_at,
+      published: data.published,
     });
-
-    return NextResponse.json(post);
   } catch {
     return NextResponse.json(
       { error: "Не удалось создать запись" },

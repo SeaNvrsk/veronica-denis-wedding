@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { updateBlogPost, deleteBlogPost } from "@/lib/store";
+import { getSupabaseServiceClient } from "@/utils/supabase";
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "wedding2026";
 
@@ -20,11 +20,30 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const post = await updateBlogPost(id, body);
-    if (!post) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    const updates: any = {};
+    if (typeof body.title === "string") updates.title = body.title.trim();
+    if (typeof body.contentHtml === "string") updates.content_html = body.contentHtml;
+    if (Array.isArray(body.media)) updates.media = body.media;
+    if (typeof body.published === "boolean") updates.published = body.published;
+
+    const supabase = getSupabaseServiceClient();
+    const { data, error } = await supabase
+      .from("blog_posts")
+      .update(updates)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) {
+      return NextResponse.json({ error: "Не удалось обновить запись", details: error.message }, { status: 500 });
     }
-    return NextResponse.json(post);
+    return NextResponse.json({
+      id: data.id,
+      title: data.title,
+      contentHtml: data.content_html,
+      media: data.media || [],
+      createdAt: data.created_at,
+      published: data.published,
+    });
   } catch {
     return NextResponse.json(
       { error: "Не удалось обновить запись" },
@@ -43,9 +62,10 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const deleted = await deleteBlogPost(id);
-    if (!deleted) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    const supabase = getSupabaseServiceClient();
+    const { error } = await supabase.from("blog_posts").delete().eq("id", id);
+    if (error) {
+      return NextResponse.json({ error: "Не удалось удалить запись", details: error.message }, { status: 500 });
     }
     return NextResponse.json({ success: true });
   } catch {

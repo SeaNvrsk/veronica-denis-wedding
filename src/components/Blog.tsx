@@ -6,9 +6,8 @@ import Image from "next/image";
 interface BlogPost {
   id: string;
   title: string;
-  content: string;
-  images: string[];
-  videoUrl?: string;
+  contentHtml: string;
+  media: { url: string; type: "image" | "video" }[];
   createdAt: string;
 }
 
@@ -57,25 +56,15 @@ export function Blog() {
                 key={post.id}
                 className="bg-white/95 backdrop-blur rounded-2xl overflow-hidden shadow-xl border border-indigo-100 animate-fade-in"
               >
-                {post.images.length > 0 && (
+                {post.media?.find((m) => m.type === "image") && (
                   <div className="relative h-64 md:h-80">
                     <Image
-                      src={post.images[0]}
+                      src={post.media.find((m) => m.type === "image")!.url}
                       alt={post.title}
                       fill
                       className="object-cover"
                       unoptimized
                       sizes="(max-width: 768px) 100vw, 672px"
-                    />
-                  </div>
-                )}
-                {post.videoUrl && !post.images.length && (
-                  <div className="aspect-video">
-                    <iframe
-                      src={post.videoUrl}
-                      title={post.title}
-                      className="w-full h-full"
-                      allowFullScreen
                     />
                   </div>
                 )}
@@ -86,23 +75,36 @@ export function Blog() {
                   <h3 className="text-2xl font-serif text-indigo-900 mt-2 mb-4">
                     {post.title}
                   </h3>
-                  <div className="text-indigo-800 whitespace-pre-wrap leading-relaxed">
-                    {post.content}
-                  </div>
-                  {post.images.length > 1 && (
-                    <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {post.images.slice(1).map((img, i) => (
+                  <div
+                    className="prose prose-indigo max-w-none"
+                    dangerouslySetInnerHTML={{ __html: post.contentHtml }}
+                  />
+
+                  {Array.isArray(post.media) && post.media.length > 1 && (
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {post.media.slice(1).map((m, i) => (
                         <div
                           key={i}
-                          className="relative aspect-square rounded-lg overflow-hidden"
+                          className="rounded-lg overflow-hidden border border-indigo-100 bg-white"
                         >
-                          <Image
-                            src={img}
-                            alt=""
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
+                          {m.type === "image" ? (
+                            <div className="relative aspect-video">
+                              <Image
+                                src={m.url}
+                                alt=""
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
+                          ) : (
+                            <video
+                              src={m.url}
+                              controls
+                              className="w-full"
+                              playsInline
+                            />
+                          )}
                         </div>
                       ))}
                     </div>

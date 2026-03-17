@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/utils/supabase";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 interface BlogPost {
   id: string;
   title: string;
-  content: string;
-  images: string[];
-  videoUrl?: string;
+  contentHtml: string;
+  media: { url: string; type: "image" | "video" }[];
   published: boolean;
   createdAt: string;
 }
@@ -44,6 +44,8 @@ interface QuizResultRow {
   total: number;
   created_at: string;
 }
+
+type DailyCount = { day: string; count: number };
 
 function QuizQuestionForm({
   question,
@@ -122,9 +124,8 @@ export default function AdminPage() {
 
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [formTitle, setFormTitle] = useState("");
-  const [formContent, setFormContent] = useState("");
-  const [formImages, setFormImages] = useState("");
-  const [formVideoUrl, setFormVideoUrl] = useState("");
+  const [formContentHtml, setFormContentHtml] = useState("<p></p>");
+  const [formMedia, setFormMedia] = useState<{ url: string; type: "image" | "video" }[]>([]);
   const [formPublished, setFormPublished] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -134,6 +135,8 @@ export default function AdminPage() {
   const [quizSaving, setQuizSaving] = useState(false);
   const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntry[]>([]);
   const [quizResults, setQuizResults] = useState<QuizResultRow[]>([]);
+  const [dailyGuestbook, setDailyGuestbook] = useState<DailyCount[]>([]);
+  const [dailyQuiz, setDailyQuiz] = useState<DailyCount[]>([]);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("adminToken");
@@ -187,6 +190,22 @@ export default function AdminPage() {
         .order("created_at", { ascending: false })
         .limit(200);
       setQuizResults((qr as QuizResultRow[]) || []);
+
+      // simple per-day stats (last 30 days), computed client-side
+      const toDay = (iso: string) => new Date(iso).toISOString().slice(0, 10);
+      const agg = (items: { created_at: string }[]) => {
+        const map = new Map<string, number>();
+        for (const it of items) {
+          const d = toDay(it.created_at);
+          map.set(d, (map.get(d) || 0) + 1);
+        }
+        return Array.from(map.entries())
+          .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+          .slice(0, 30)
+          .map(([day, count]) => ({ day, count }));
+      };
+      setDailyGuestbook(agg((gb as GuestbookEntry[]) || []));
+      setDailyQuiz(agg((qr as QuizResultRow[]) || []));
 
       const channel = supabase
         .channel("admin-realtime")
@@ -253,14 +272,10 @@ export default function AdminPage() {
 
   const handleSubmitPost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formTitle.trim() || !formContent.trim()) return;
+    if (!formTitle.trim() || !formContentHtml.trim()) return;
     setSubmitting(true);
     setError("");
     try {
-      const images = formImages
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean);
       const res = await fetch("/api/blog", {
         method: "POST",
         headers: {
@@ -269,9 +284,8 @@ export default function AdminPage() {
         },
         body: JSON.stringify({
           title: formTitle.trim(),
-          content: formContent.trim(),
-          images,
-          videoUrl: formVideoUrl.trim() || undefined,
+          contentHtml: formContentHtml,
+          media: formMedia,
           published: formPublished,
         }),
       });
@@ -279,9 +293,8 @@ export default function AdminPage() {
       if (res.ok) {
         setPosts((prev) => [data, ...prev]);
         setFormTitle("");
-        setFormContent("");
-        setFormImages("");
-        setFormVideoUrl("");
+        setFormContentHtml("<p></p>");
+        setFormMedia([]);
       } else {
         setError(data.error || "Ошибка");
       }
@@ -290,6 +303,24 @@ export default function AdminPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const uploadBlogMedia = async (file: File) => {
+    setError("");
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("kind", "blog");
+    const res = await fetch("/api/admin/upload", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Ошибка загрузки");
+      return;
+    }
+    setFormMedia((prev) => [...prev, { url: data.url, type: data.type }]);
   };
 
   const handleDeletePost = async (id: string) => {
@@ -303,6 +334,25 @@ export default function AdminPage() {
         setPosts((prev) => prev.filter((p) => p.id !== id));
       }
     } catch {}
+  };
+
+  const handleDeleteGuestbook = async (id: string) => {
+    if (!confirm("Удалить комментарий?")) return;
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/guestbook/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Ошибка удаления");
+        return;
+      }
+      setGuestbookEntries((prev) => prev.filter((x) => x.id !== id));
+    } catch {
+      setError("Ошибка удаления");
+    }
   };
 
   const handleSaveQuizQuestion = (q: QuizQuestion) => {
@@ -431,6 +481,36 @@ export default function AdminPage() {
               Всего: {guestbookEntries.length}
             </span>
           </div>
+          {(dailyGuestbook.length > 0 || dailyQuiz.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+              <div className="p-4 rounded-xl bg-indigo-50">
+                <p className="font-medium text-indigo-900 mb-2">
+                  Пожелания по дням (последние)
+                </p>
+                <div className="space-y-1 text-sm text-indigo-700">
+                  {dailyGuestbook.slice(0, 7).map((d) => (
+                    <div key={d.day} className="flex justify-between">
+                      <span>{d.day}</span>
+                      <span className="font-semibold">{d.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="p-4 rounded-xl bg-indigo-50">
+                <p className="font-medium text-indigo-900 mb-2">
+                  Викторина по дням (последние)
+                </p>
+                <div className="space-y-1 text-sm text-indigo-700">
+                  {dailyQuiz.slice(0, 7).map((d) => (
+                    <div key={d.day} className="flex justify-between">
+                      <span>{d.day}</span>
+                      <span className="font-semibold">{d.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="space-y-3 max-h-[420px] overflow-auto pr-1">
             {guestbookEntries.map((e) => (
               <div key={e.id} className="p-4 rounded-xl bg-indigo-50">
@@ -441,6 +521,13 @@ export default function AdminPage() {
                   <span className="text-xs text-indigo-500">
                     {new Date(e.created_at).toLocaleString("ru-RU")}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteGuestbook(e.id)}
+                    className="ml-auto px-3 py-1 rounded-lg text-red-600 hover:bg-red-50 text-xs"
+                  >
+                    Удалить
+                  </button>
                 </div>
                 <p className="mt-2 text-indigo-800 whitespace-pre-wrap">
                   {e.message}
@@ -574,28 +661,63 @@ export default function AdminPage() {
               className="w-full px-4 py-2 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none"
               required
             />
-            <textarea
-              value={formContent}
-              onChange={(e) => setFormContent(e.target.value)}
-              placeholder="Текст записи"
-              rows={6}
-              className="w-full px-4 py-2 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none resize-none"
-              required
+            <RichTextEditor
+              value={formContentHtml}
+              onChange={setFormContentHtml}
             />
-            <input
-              type="url"
-              value={formVideoUrl}
-              onChange={(e) => setFormVideoUrl(e.target.value)}
-              placeholder="URL видео (YouTube и т.д.)"
-              className="w-full px-4 py-2 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none"
-            />
-            <textarea
-              value={formImages}
-              onChange={(e) => setFormImages(e.target.value)}
-              placeholder="Ссылки на изображения (каждая с новой строки)"
-              rows={3}
-              className="w-full px-4 py-2 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none resize-none"
-            />
+            <div className="flex flex-wrap gap-3 items-center">
+              <label className="px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition cursor-pointer text-sm font-medium">
+                📷 Загрузить фото
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadBlogMedia(f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              <label className="px-4 py-2 rounded-xl bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition cursor-pointer text-sm font-medium">
+                🎬 Загрузить видео
+                <input
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadBlogMedia(f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {formMedia.length > 0 && (
+                <span className="text-sm text-indigo-600">
+                  Вложений: {formMedia.length}
+                </span>
+              )}
+            </div>
+            {formMedia.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {formMedia.map((m, i) => (
+                  <div key={i} className="rounded-lg overflow-hidden border border-indigo-100 bg-white">
+                    {m.type === "image" ? (
+                      <img src={m.url} alt="" className="w-full h-28 object-cover" />
+                    ) : (
+                      <video src={m.url} className="w-full h-28 object-cover" muted />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setFormMedia((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="w-full text-xs py-1 text-red-600 hover:bg-red-50"
+                    >
+                      Удалить вложение
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
