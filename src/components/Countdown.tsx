@@ -23,17 +23,23 @@ function formatTimeLeft(ms: number) {
 }
 
 export function Countdown() {
-  const [timeLeft, setTimeLeft] = useState<number | null>(getTimeLeft());
+  const [mounted, setMounted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      const left = getTimeLeft();
-      setTimeLeft(left);
-    }, 1000);
-    return () => clearInterval(timer);
+    setMounted(true);
+    setTimeLeft(getTimeLeft());
   }, []);
 
-  if (timeLeft === null) {
+  useEffect(() => {
+    if (!mounted) return;
+    const timer = setInterval(() => {
+      setTimeLeft(getTimeLeft());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [mounted]);
+
+  if (mounted && timeLeft === null) {
     return (
       <div className="text-center py-16">
         <p className="text-2xl md:text-4xl font-serif text-indigo-800">
@@ -44,14 +50,22 @@ export function Countdown() {
     );
   }
 
-  const { days, hours, minutes, seconds } = formatTimeLeft(timeLeft);
-
-  const units = [
-    { value: days, label: "дней" },
-    { value: hours, label: "часов" },
-    { value: minutes, label: "минут" },
-    { value: seconds, label: "секунд" },
-  ];
+  const units = mounted && timeLeft !== null
+    ? (() => {
+        const { days, hours, minutes, seconds } = formatTimeLeft(timeLeft);
+        return [
+          { value: days, label: "дней" },
+          { value: hours, label: "часов" },
+          { value: minutes, label: "минут" },
+          { value: seconds, label: "секунд" },
+        ];
+      })()
+    : [
+        { value: 0, label: "дней" },
+        { value: 0, label: "часов" },
+        { value: 0, label: "минут" },
+        { value: 0, label: "секунд" },
+      ];
 
   return (
     <section className="py-20 md:py-32">
