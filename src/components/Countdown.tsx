@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 
+/** 21 марта 2026, 9:30 по Москве */
 const WEDDING_DATE = new Date("2026-03-21T09:30:00+03:00");
 
 function getTimeLeft() {
-  const now = new Date();
+  const now = new Date(); // сравнение в UTC — логика корректна для любого часового пояса
   if (now >= WEDDING_DATE) {
     return null;
   }

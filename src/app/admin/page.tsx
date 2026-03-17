@@ -519,7 +519,7 @@ export default function AdminPage() {
                     {e.emoji || "💕"} {e.author}
                   </span>
                   <span className="text-xs text-indigo-500">
-                    {new Date(e.created_at).toLocaleString("ru-RU")}
+                    {new Date(e.created_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}
                   </span>
                   <button
                     type="button"
@@ -582,7 +582,7 @@ export default function AdminPage() {
                     {r.score} / {r.total}
                   </p>
                   <p className="text-xs text-indigo-500">
-                    {new Date(r.created_at).toLocaleString("ru-RU")}
+                    {new Date(r.created_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}
                   </p>
                 </div>
                 <span className="text-xs text-indigo-400 self-center">
@@ -750,7 +750,7 @@ export default function AdminPage() {
                 <div>
                   <h3 className="font-medium text-indigo-900">{post.title}</h3>
                   <p className="text-sm text-indigo-600 mt-1">
-                    {new Date(post.createdAt).toLocaleDateString("ru-RU")}
+                    {new Date(post.createdAt).toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })}
                   </p>
                 </div>
                 <button

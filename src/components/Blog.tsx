@@ -25,6 +25,7 @@ export function Blog() {
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("ru-RU", {
+      timeZone: "Europe/Moscow",
       day: "numeric",
       month: "long",
       year: "numeric",
