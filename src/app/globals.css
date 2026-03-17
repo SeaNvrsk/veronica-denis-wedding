@@ -41,6 +41,12 @@ body {
   animation-play-state: paused;
 }
 
+@media (max-width: 640px) {
+  .animate-scroll {
+    animation-duration: 22s;
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;

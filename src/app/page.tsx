@@ -1,5 +1,6 @@
 import { PhotoStrip } from "@/components/PhotoStrip";
 import { Countdown } from "@/components/Countdown";
+import { GiftSupport } from "@/components/GiftSupport";
 import { Guestbook } from "@/components/Guestbook";
 import { Quiz } from "@/components/Quiz";
 import { Blog } from "@/components/Blog";
@@ -40,8 +41,15 @@ export default function Home() {
           >
             Блог
           </a>
+          <a
+            href="#gift"
+            className="px-5 py-3 sm:px-6 sm:py-2 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 active:bg-indigo-200 transition touch-manipulation"
+          >
+            Помочь
+          </a>
         </nav>
 
+        <GiftSupport />
         <Guestbook />
         <Quiz />
         <Blog />
