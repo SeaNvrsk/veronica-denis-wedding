@@ -60,7 +60,18 @@ export default function Home() {
       </main>
 
       <footer className="py-8 pb-[max(2rem,env(safe-area-inset-bottom))] text-center text-indigo-500 text-sm">
-        С любовью · 21 марта 2026 · Сочи
+        <div>С любовью · 21 марта 2026 · Сочи</div>
+        <div className="mt-1 text-xs text-indigo-400">
+          Made by:{" "}
+          <a
+            href="https://instagram.com/an_cdmx"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-indigo-500"
+          >
+            an_cdmx
+          </a>
+        </div>
       </footer>
     </div>
   );
