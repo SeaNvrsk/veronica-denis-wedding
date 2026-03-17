@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getSupabaseBrowserClient } from "@/utils/supabase";
 
 interface BlogPost {
   id: string;
@@ -25,6 +26,23 @@ interface QuizStats {
   avgScore: number;
   totalQuestions: number;
   questionStats: { questionId: number; question: string; correctCount: number; totalParticipants: number; percentage: number }[];
+}
+
+interface GuestbookEntry {
+  id: string;
+  author: string;
+  message: string;
+  emoji?: string | null;
+  image_url?: string | null;
+  video_url?: string | null;
+  created_at: string;
+}
+
+interface QuizResultRow {
+  id: string;
+  score: number;
+  total: number;
+  created_at: string;
 }
 
 function QuizQuestionForm({
@@ -114,19 +132,23 @@ export default function AdminPage() {
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null);
   const [quizSaving, setQuizSaving] = useState(false);
+  const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntry[]>([]);
+  const [quizResults, setQuizResults] = useState<QuizResultRow[]>([]);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("adminToken");
     if (stored) {
       setToken(stored);
       setAuthenticated(true);
-      fetchPosts(stored);
+      fetchPosts();
       fetchQuizStats();
       fetchQuizQuestions(stored);
+      fetchRealtimeData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchPosts = (t: string) => {
+  const fetchPosts = () => {
     fetch("/api/blog")
       .then((r) => r.json())
       .then((data) => setPosts(Array.isArray(data) ? data : []))
@@ -149,6 +171,52 @@ export default function AdminPage() {
       .catch(() => {});
   };
 
+  const fetchRealtimeData = async () => {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data: gb } = await supabase
+        .from("guestbook")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      setGuestbookEntries((gb as GuestbookEntry[]) || []);
+
+      const { data: qr } = await supabase
+        .from("quiz_results")
+        .select("id, score, total, created_at")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      setQuizResults((qr as QuizResultRow[]) || []);
+
+      const channel = supabase
+        .channel("admin-realtime")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "guestbook" },
+          (payload) => {
+            const row = payload.new as GuestbookEntry;
+            setGuestbookEntries((prev) => [row, ...prev].slice(0, 200));
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "quiz_results" },
+          (payload) => {
+            const row = payload.new as QuizResultRow;
+            setQuizResults((prev) => [row, ...prev].slice(0, 200));
+            fetchQuizStats();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch {
+      // ignore
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -165,6 +233,8 @@ export default function AdminPage() {
         setAuthenticated(true);
         sessionStorage.setItem("adminToken", data.token);
         fetchQuizQuestions(data.token);
+        fetchQuizStats();
+        fetchRealtimeData();
       } else {
         setError(data.error || "Неверный пароль");
       }
@@ -349,6 +419,94 @@ export default function AdminPage() {
           ) : (
             <p className="text-indigo-600">Загрузка...</p>
           )}
+        </div>
+
+        {/* Пожелания (гостевой альбом) */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-indigo-100">
+          <div className="flex items-baseline justify-between gap-4 mb-4">
+            <h2 className="text-lg font-semibold text-indigo-900">
+              Пожелания (гостевой альбом)
+            </h2>
+            <span className="text-sm text-indigo-600">
+              Всего: {guestbookEntries.length}
+            </span>
+          </div>
+          <div className="space-y-3 max-h-[420px] overflow-auto pr-1">
+            {guestbookEntries.map((e) => (
+              <div key={e.id} className="p-4 rounded-xl bg-indigo-50">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="font-semibold text-indigo-900">
+                    {e.emoji || "💕"} {e.author}
+                  </span>
+                  <span className="text-xs text-indigo-500">
+                    {new Date(e.created_at).toLocaleString("ru-RU")}
+                  </span>
+                </div>
+                <p className="mt-2 text-indigo-800 whitespace-pre-wrap">
+                  {e.message}
+                </p>
+                {(e.image_url || e.video_url) && (
+                  <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                    {e.image_url && (
+                      <a
+                        className="text-indigo-700 underline"
+                        href={e.image_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Фото
+                      </a>
+                    )}
+                    {e.video_url && (
+                      <a
+                        className="text-indigo-700 underline"
+                        href={e.video_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Видео
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+            {guestbookEntries.length === 0 && (
+              <p className="text-indigo-600">Пока нет пожеланий</p>
+            )}
+          </div>
+        </div>
+
+        {/* Результаты викторины */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-indigo-100">
+          <div className="flex items-baseline justify-between gap-4 mb-4">
+            <h2 className="text-lg font-semibold text-indigo-900">
+              Результаты викторины
+            </h2>
+            <span className="text-sm text-indigo-600">
+              Всего: {quizResults.length}
+            </span>
+          </div>
+          <div className="space-y-2 max-h-[360px] overflow-auto pr-1">
+            {quizResults.map((r) => (
+              <div key={r.id} className="p-3 rounded-xl bg-indigo-50 flex justify-between gap-3">
+                <div>
+                  <p className="font-medium text-indigo-900">
+                    {r.score} / {r.total}
+                  </p>
+                  <p className="text-xs text-indigo-500">
+                    {new Date(r.created_at).toLocaleString("ru-RU")}
+                  </p>
+                </div>
+                <span className="text-xs text-indigo-400 self-center">
+                  {r.id.slice(0, 8)}
+                </span>
+              </div>
+            ))}
+            {quizResults.length === 0 && (
+              <p className="text-indigo-600">Пока нет результатов</p>
+            )}
+          </div>
         </div>
 
         {/* Вопросы викторины */}

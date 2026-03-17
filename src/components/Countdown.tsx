@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatDistanceStrict } from "date-fns";
-import { ru } from "date-fns/locale";
 
 const WEDDING_DATE = new Date("2026-03-21T09:30:00+03:00");
 

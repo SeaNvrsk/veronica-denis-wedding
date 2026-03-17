@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
+import {
+  createGuestbookEntryAction,
+  uploadGuestbookMediaAction,
+} from "@/app/actions";
 
 const EmojiPicker = dynamic(
   () => import("emoji-picker-react").then((mod) => mod.default),
@@ -26,7 +30,6 @@ export function Guestbook() {
   const [message, setMessage] = useState("");
   const [emoji, setEmoji] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -62,31 +65,24 @@ export function Guestbook() {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/guestbook", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          author: author.trim(),
-          message: message.trim(),
-          emoji: emoji || undefined,
-          image: uploadedImageUrl || imageUrl.trim() || undefined,
-          video: uploadedVideoUrl || undefined,
-        }),
+      const res = await createGuestbookEntryAction({
+        author,
+        message,
+        emoji: emoji || undefined,
+        imageUrl: uploadedImageUrl || imageUrl.trim() || undefined,
+        videoUrl: uploadedVideoUrl || undefined,
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        setError(data.error || "Ошибка отправки");
+        setError(res.error || "Ошибка отправки");
         return;
       }
 
-      setEntries((prev) => [data, ...prev]);
+      setEntries((prev) => [res.entry, ...prev]);
       setAuthor("");
       setMessage("");
       setEmoji("");
       setImageUrl("");
-      setVideoUrl("");
       setUploadedImageUrl(null);
       setUploadedVideoUrl(null);
     } catch {
@@ -109,12 +105,8 @@ export function Guestbook() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/upload/guestbook", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) {
+      const data = await uploadGuestbookMediaAction(formData);
+      if (!data.ok) {
         setError(data.error || "Ошибка загрузки файла");
         return;
       }

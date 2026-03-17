@@ -1,10 +1,30 @@
 import { NextResponse } from "next/server";
-import { getGuestbookEntries, addGuestbookEntry } from "@/lib/store";
+import { getSupabaseServerClient } from "@/utils/supabase";
 
 export async function GET() {
   try {
-    const entries = await getGuestbookEntries();
-    return NextResponse.json(entries);
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("guestbook")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) {
+      return NextResponse.json(
+        { error: "Failed to load guestbook" },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json(
+      (data || []).map((row) => ({
+        id: row.id,
+        author: row.author,
+        message: row.message,
+        emoji: row.emoji ?? undefined,
+        image: row.image_url ?? undefined,
+        video: row.video_url ?? undefined,
+        createdAt: row.created_at,
+      }))
+    );
   } catch {
     return NextResponse.json(
       { error: "Failed to load guestbook" },
@@ -39,15 +59,35 @@ export async function POST(request: Request) {
       );
     }
 
-    const entry = await addGuestbookEntry({
-      author: author.trim(),
-      message: message.trim(),
-      emoji: emoji || undefined,
-      image: image || undefined,
-      video: video || undefined,
-    });
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("guestbook")
+      .insert({
+        author: author.trim(),
+        message: message.trim(),
+        emoji: emoji || null,
+        image_url: image || null,
+        video_url: video || null,
+      })
+      .select("*")
+      .single();
 
-    return NextResponse.json(entry);
+    if (error) {
+      return NextResponse.json(
+        { error: "Не удалось добавить сообщение" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      id: data.id,
+      author: data.author,
+      message: data.message,
+      emoji: data.emoji ?? undefined,
+      image: data.image_url ?? undefined,
+      video: data.video_url ?? undefined,
+      createdAt: data.created_at,
+    });
   } catch {
     return NextResponse.json(
       { error: "Не удалось добавить сообщение" },

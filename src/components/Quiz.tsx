@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { submitQuizResultAction } from "@/app/actions";
 
 interface QuizQuestion {
   id: number;
@@ -75,28 +76,35 @@ export function Quiz() {
     const toSubmit = finalAnswers ?? answers;
     setLoading(true);
     try {
-      const res = await fetch("/api/quiz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          answers: Object.entries(toSubmit).map(([qId, answer]) => ({
-            questionId: Number(qId),
-            answer,
-          })),
-        }),
+      const processed = Object.entries(toSubmit).map(([qId, answer]) => {
+        const question = questions.find((q) => q.id === Number(qId));
+        const correct = question ? question.correctIndex === answer : false;
+        return {
+          questionId: Number(qId),
+          answer,
+          correct,
+        };
       });
-      const data = await res.json();
-      if (data.correctAnswers) {
-        setResult({
-          score: data.score,
-          total: data.total,
-          correctAnswers: data.correctAnswers,
-        });
-        fetch("/api/quiz?type=stats")
-          .then((r) => r.json())
-          .then(setStats)
-          .catch(() => {});
+      const score = processed.filter((a) => a.correct).length;
+      const total = questions.length;
+
+      const saved = await submitQuizResultAction({
+        answers: processed,
+        score,
+        total,
+      });
+
+      if (!saved.ok) {
+        // fall back to showing local result
+        setResult({ score, total, correctAnswers: processed });
+      } else {
+        setResult({ score, total, correctAnswers: processed });
       }
+
+      fetch("/api/quiz?type=stats")
+        .then((r) => r.json())
+        .then(setStats)
+        .catch(() => {});
     } catch {
     } finally {
       setLoading(false);

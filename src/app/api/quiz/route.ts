@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { getQuizSubmissions, addQuizSubmission, getQuizQuestions } from "@/lib/store";
+import { getQuizQuestions } from "@/lib/store";
+import { getSupabaseServerClient } from "@/utils/supabase";
+
+type QuizAnswerRow = { questionId: number; answer: number; correct: boolean };
+type QuizResultRow = { score: number; total: number; answers: QuizAnswerRow[] };
 
 export async function GET(request: Request) {
   try {
@@ -8,11 +12,21 @@ export async function GET(request: Request) {
     const type = searchParams.get("type");
 
     if (type === "stats") {
-      const submissions = await getQuizSubmissions();
-      const totalParticipants = submissions.length;
+      const supabase = getSupabaseServerClient();
+      const { data: submissions, error } = await supabase
+        .from("quiz_results")
+        .select("score, total, answers");
+      if (error) {
+        return NextResponse.json(
+          { error: "Failed to load quiz" },
+          { status: 500 }
+        );
+      }
+      const totalParticipants = (submissions || []).length;
       const questionStats = questions.map((q) => {
-        const correctCount = submissions.filter((s) => {
-          const answer = s.answers.find((a) => a.questionId === q.id);
+        const correctCount = (submissions as unknown as QuizResultRow[] | null || []).filter((s) => {
+          const answers = Array.isArray(s.answers) ? s.answers : [];
+          const answer = answers.find((a) => a.questionId === q.id);
           return answer?.correct;
         }).length;
         return {
@@ -29,8 +43,10 @@ export async function GET(request: Request) {
       const avgScore =
         totalParticipants > 0
           ? Math.round(
-              submissions.reduce((sum, s) => sum + s.score, 0) /
-                totalParticipants
+              ((submissions as unknown as QuizResultRow[] | null) || []).reduce(
+                (sum, s) => sum + (s.score || 0),
+                0
+              ) / totalParticipants
             )
           : 0;
 
@@ -84,14 +100,23 @@ export async function POST(request: Request) {
     const score = processedAnswers.filter((a) => a.correct).length;
     const total = questions.length;
 
-    const submission = await addQuizSubmission({
-      answers: processedAnswers,
-      score,
-      total,
-    });
-
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("quiz_results")
+      .insert({ score, total, answers: processedAnswers })
+      .select("*")
+      .single();
+    if (error) {
+      return NextResponse.json(
+        { error: "Не удалось сохранить ответы" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json({
-      ...submission,
+      id: data.id,
+      score: data.score,
+      total: data.total,
+      submittedAt: data.created_at,
       correctAnswers: processedAnswers,
     });
   } catch {
