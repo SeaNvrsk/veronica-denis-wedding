@@ -74,7 +74,10 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: "Не удалось добавить сообщение" },
+        {
+          error: "Не удалось добавить сообщение",
+          details: error.message,
+        },
         { status: 500 }
       );
     }
@@ -88,9 +91,12 @@ export async function POST(request: Request) {
       video: data.video_url ?? undefined,
       createdAt: data.created_at,
     });
-  } catch {
+  } catch (e) {
     return NextResponse.json(
-      { error: "Не удалось добавить сообщение" },
+      {
+        error: "Не удалось добавить сообщение",
+        details: e instanceof Error ? e.message : String(e),
+      },
       { status: 500 }
     );
   }

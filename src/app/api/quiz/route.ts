@@ -108,7 +108,7 @@ export async function POST(request: Request) {
       .single();
     if (error) {
       return NextResponse.json(
-        { error: "Не удалось сохранить ответы" },
+        { error: "Не удалось сохранить ответы", details: error.message },
         { status: 500 }
       );
     }
