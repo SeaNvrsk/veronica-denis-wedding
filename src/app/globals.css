@@ -17,7 +17,11 @@
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(165, 180, 252, 0.35), transparent 60%),
+    radial-gradient(900px 500px at 90% 10%, rgba(196, 181, 253, 0.30), transparent 55%),
+    radial-gradient(900px 600px at 50% 110%, rgba(99, 102, 241, 0.10), transparent 55%),
+    var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
@@ -34,7 +38,8 @@ body {
 }
 
 .animate-scroll {
-  animation: scroll 40s linear infinite;
+  animation: scroll 32s linear infinite;
+  will-change: transform;
 }
 
 .animate-scroll:hover {
@@ -43,7 +48,7 @@ body {
 
 @media (max-width: 640px) {
   .animate-scroll {
-    animation-duration: 22s;
+    animation-duration: 14s;
   }
 }
 

@@ -11,15 +11,18 @@ export default function Home() {
       <PhotoStrip />
 
       <header className="pt-36 md:pt-44 pb-8 text-center">
+        <div className="inline-block rounded-3xl bg-white/75 backdrop-blur-md px-6 py-5 border border-indigo-100 shadow-xl">
         <h1 className="text-4xl md:text-6xl font-serif font-bold text-indigo-900 mb-2 drop-shadow-sm">
           Вероника & Денис
         </h1>
         <p className="text-xl md:text-2xl text-indigo-700 font-medium">
           Приглашаем разделить нашу радость
         </p>
+        </div>
       </header>
 
       <main className="px-4 pb-24 max-w-4xl mx-auto">
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl border border-indigo-100 shadow-2xl px-4 sm:px-6 md:px-8">
         <Countdown />
 
         <nav className="flex flex-wrap justify-center gap-3 sm:gap-4 py-8">
@@ -53,6 +56,7 @@ export default function Home() {
         <Guestbook />
         <Quiz />
         <Blog />
+        </div>
       </main>
 
       <footer className="py-8 pb-[max(2rem,env(safe-area-inset-bottom))] text-center text-indigo-500 text-sm">
